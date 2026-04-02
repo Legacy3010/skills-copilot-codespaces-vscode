@@ -1,0 +1,11 @@
+.git/**
+.github/**
+.roo/**
+ai_coder/**
+node_modules/**/.bin/**
+node_modules/**/test/**
+node_modules/**/tests/**
+out/test/**
+src/**
+test/**
+tsconfig.json

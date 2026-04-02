@@ -1,0 +1,387 @@
+{
+  "name": "forgecode-agent",
+  "displayName": "ForgeCode",
+  "description": "A hardened, local-first VS Code coding agent that exposes LM Studio models in the model picker, chat, tools, and inline completions.",
+  "version": "0.1.0",
+  "publisher": "vibecode",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Legacy3010/skills-copilot-codespaces-vscode"
+  },
+  "engines": {
+    "vscode": "^1.103.0"
+  },
+  "categories": [
+    "AI",
+    "Other"
+  ],
+  "keywords": [
+    "lm-studio",
+    "local-ai",
+    "coding-agent",
+    "ollama",
+    "chat"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/src/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "forgeCode.refreshModels",
+        "title": "ForgeCode: Refresh Models"
+      },
+      {
+        "command": "forgeCode.configureEndpoint",
+        "title": "ForgeCode: Configure Endpoint"
+      },
+      {
+        "command": "forgeCode.configureApiKey",
+        "title": "ForgeCode: Configure API Key"
+      },
+      {
+        "command": "forgeCode.explainSelection",
+        "title": "ForgeCode: Explain Selection"
+      }
+    ],
+    "configuration": {
+      "title": "ForgeCode",
+      "properties": {
+        "forgeCode.baseUrl": {
+          "type": "string",
+          "default": "http://127.0.0.1:1234/v1",
+          "markdownDescription": "OpenAI-compatible local endpoint. LM Studio uses `http://127.0.0.1:1234/v1` by default."
+        },
+        "forgeCode.allowRemoteEndpoints": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Allow non-localhost model endpoints. When enabled, remote endpoints must use `https`."
+        },
+        "forgeCode.allowCommandExecution": {
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Allow the agent to run shell commands after an explicit confirmation prompt. Disabled by default."
+        },
+        "forgeCode.defaultChatModel": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Preferred chat model ID. Leave blank to use the first discovered model."
+        },
+        "forgeCode.defaultCompletionModel": {
+          "type": "string",
+          "default": "",
+          "markdownDescription": "Preferred inline completion model ID. Falls back to the chat model when blank."
+        },
+        "forgeCode.discoveredModels": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "markdownDescription": "Fallback model IDs used when model discovery fails."
+        },
+        "forgeCode.temperature": {
+          "type": "number",
+          "default": 0.2,
+          "minimum": 0,
+          "maximum": 2,
+          "markdownDescription": "Default temperature used for chat and inline completions."
+        },
+        "forgeCode.maxInputTokens": {
+          "type": "number",
+          "default": 64000,
+          "minimum": 1024,
+          "markdownDescription": "Declared maximum prompt budget for discovered local models."
+        },
+        "forgeCode.maxOutputTokens": {
+          "type": "number",
+          "default": 8192,
+          "minimum": 256,
+          "markdownDescription": "Declared maximum output budget for discovered local models."
+        },
+        "forgeCode.maxContextCharacters": {
+          "type": "number",
+          "default": 18000,
+          "minimum": 2000,
+          "markdownDescription": "Maximum workspace context characters injected into the agent prompt."
+        },
+        "forgeCode.maxWorkspaceFiles": {
+          "type": "number",
+          "default": 80,
+          "minimum": 10,
+          "maximum": 500,
+          "markdownDescription": "Maximum number of workspace files included in the context snapshot."
+        },
+        "forgeCode.maxToolRounds": {
+          "type": "number",
+          "default": 6,
+          "minimum": 1,
+          "maximum": 12,
+          "markdownDescription": "Maximum number of tool-calling rounds allowed for a single chat request."
+        },
+        "forgeCode.maxReadFileBytes": {
+          "type": "number",
+          "default": 262144,
+          "minimum": 4096,
+          "markdownDescription": "Maximum file size that read and edit tools will load into the model context."
+        },
+        "forgeCode.maxSearchFileBytes": {
+          "type": "number",
+          "default": 131072,
+          "minimum": 4096,
+          "markdownDescription": "Maximum file size that search tools will scan before skipping a file."
+        },
+        "forgeCode.maxCommandOutputCharacters": {
+          "type": "number",
+          "default": 12000,
+          "minimum": 1000,
+          "markdownDescription": "Maximum shell output characters returned to the agent after a command completes."
+        },
+        "forgeCode.inlineCompletions.enabled": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Enable inline code completions powered by the local endpoint."
+        },
+        "forgeCode.inlineCompletions.maxPrefixChars": {
+          "type": "number",
+          "default": 4000,
+          "minimum": 200,
+          "markdownDescription": "Maximum prefix characters sent to the completion model."
+        },
+        "forgeCode.inlineCompletions.maxSuffixChars": {
+          "type": "number",
+          "default": 1000,
+          "minimum": 0,
+          "markdownDescription": "Maximum suffix characters sent to the completion model."
+        },
+        "forgeCode.inlineCompletions.minPromptCharacters": {
+          "type": "number",
+          "default": 8,
+          "minimum": 0,
+          "markdownDescription": "Minimum characters before automatic inline completions are requested."
+        }
+      }
+    },
+    "chatParticipants": [
+      {
+        "id": "forgecode-agent.agent",
+        "name": "local",
+        "fullName": "ForgeCode",
+        "description": "A local-first coding agent backed by LM Studio or any OpenAI-compatible endpoint.",
+        "isSticky": true,
+        "commands": [
+          {
+            "name": "plan",
+            "description": "Plan a change with read-only tools"
+          },
+          {
+            "name": "implement",
+            "description": "Implement a change using read, write, and terminal tools"
+          },
+          {
+            "name": "review",
+            "description": "Review code for bugs, regressions, and missing tests"
+          },
+          {
+            "name": "explain",
+            "description": "Explain code or project structure"
+          }
+        ]
+      }
+    ],
+    "languageModelChatProviders": [
+      {
+        "vendor": "forgecode-agent",
+        "displayName": "ForgeCode"
+      }
+    ],
+    "languageModelTools": [
+      {
+        "name": "forgecode-agent-list-workspace-files",
+        "displayName": "List Workspace Files",
+        "description": "List workspace files, optionally filtered by a glob pattern.",
+        "modelDescription": "List files in the current workspace, optionally narrowed by a glob pattern.",
+        "inputSchema": {
+          "type": "object",
+          "properties": {
+            "glob": {
+              "type": "string"
+            },
+            "maxResults": {
+              "type": "number"
+            }
+          }
+        },
+        "tags": [
+          "forgecode-agent",
+          "read",
+          "workspace"
+        ]
+      },
+      {
+        "name": "forgecode-agent-search-workspace",
+        "displayName": "Search Workspace",
+        "description": "Search workspace text using a plain-text or regular expression query.",
+        "modelDescription": "Search text content across workspace files using a string or regular expression.",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "query"
+          ],
+          "properties": {
+            "query": {
+              "type": "string"
+            },
+            "isRegExp": {
+              "type": "boolean"
+            },
+            "include": {
+              "type": "string"
+            },
+            "maxResults": {
+              "type": "number"
+            }
+          }
+        },
+        "tags": [
+          "forgecode-agent",
+          "read",
+          "search"
+        ]
+      },
+      {
+        "name": "forgecode-agent-read-file",
+        "displayName": "Read Workspace File",
+        "description": "Read a UTF-8 text file from the workspace with optional line bounds.",
+        "modelDescription": "Read a text file from the workspace with optional line bounds.",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "path"
+          ],
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "startLine": {
+              "type": "number"
+            },
+            "endLine": {
+              "type": "number"
+            }
+          }
+        },
+        "tags": [
+          "forgecode-agent",
+          "read",
+          "file"
+        ]
+      },
+      {
+        "name": "forgecode-agent-write-file",
+        "displayName": "Write Workspace File",
+        "description": "Create or overwrite a UTF-8 text file inside the workspace.",
+        "modelDescription": "Create or overwrite a text file inside the current workspace.",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "path",
+            "content"
+          ],
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            }
+          }
+        },
+        "tags": [
+          "forgecode-agent",
+          "write",
+          "file"
+        ]
+      },
+      {
+        "name": "forgecode-agent-replace-in-file",
+        "displayName": "Replace Text In File",
+        "description": "Replace a specific string in a UTF-8 workspace file.",
+        "modelDescription": "Replace an exact text match in a workspace file.",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "path",
+            "oldText",
+            "newText"
+          ],
+          "properties": {
+            "path": {
+              "type": "string"
+            },
+            "oldText": {
+              "type": "string"
+            },
+            "newText": {
+              "type": "string"
+            }
+          }
+        },
+        "tags": [
+          "forgecode-agent",
+          "write",
+          "file"
+        ]
+      },
+      {
+        "name": "forgecode-agent-run-terminal-command",
+        "displayName": "Run Terminal Command",
+        "description": "Run a shell command inside the current workspace and capture stdout and stderr.",
+        "modelDescription": "Run a shell command in the current workspace after explicit user confirmation.",
+        "inputSchema": {
+          "type": "object",
+          "required": [
+            "command"
+          ],
+          "properties": {
+            "command": {
+              "type": "string"
+            },
+            "cwd": {
+              "type": "string"
+            },
+            "timeoutMs": {
+              "type": "number"
+            }
+          }
+        },
+        "tags": [
+          "forgecode-agent",
+          "exec",
+          "terminal"
+        ]
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "tsc -p ./",
+    "compile": "tsc -p ./",
+    "watch": "tsc -w -p ./",
+    "lint": "tsc -p ./ --noEmit",
+    "test:unit": "tsc -p ./ && node --test out/test/**/*.test.js",
+    "test:integration": "tsc -p ./ && node ./out/test/integration/runTest.js",
+    "test": "tsc -p ./ && node --test out/test/**/*.test.js && node ./out/test/integration/runTest.js",
+    "package": "vsce package --no-dependencies"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^22.10.2",
+    "@types/vscode": "^1.103.0",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.3.2",
+    "mocha": "^11.7.4",
+    "typescript": "^5.7.2"
+  }
+}

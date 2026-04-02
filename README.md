@@ -1,94 +1,70 @@
-<header>
+# ForgeCode
 
-<!--
-  <<< Author notes: Course header >>>
-  Read <https://skills.github.com/quickstart> for more information about how to build courses using this template.
-  Include a 1280×640 image, course name in sentence case, and a concise description in emphasis.
-  In your repository settings: enable template repository, add your 1280×640 social image, auto delete head branches.
-  Next to "About", add description & tags; disable releases, packages, & environments.
-  Add your open source license, GitHub uses the MIT license.
--->
+This repository now targets a production-oriented VS Code extension named ForgeCode. The new runtime is local-first: it exposes LM Studio models through the VS Code model picker, provides a chat participant with tool calling, and adds inline code completions without depending on Roo’s append-only memory flow.
 
-# Code with GitHub Copilot
+The old Roo prototype remains in `ai_coder/` as legacy reference material. It is no longer the primary architecture.
 
-_GitHub Copilot can help you code by offering autocomplete-style suggestions right in VS Code and Codespaces._
+## What the extension does
 
-</header>
+- Registers a custom language model provider for LM Studio or any OpenAI-compatible endpoint.
+- Exposes those models in the VS Code chat model picker under the `ForgeCode` vendor.
+- Adds a sticky `@local` chat participant with `plan`, `implement`, `review`, and `explain` commands.
+- Registers workspace tools for file listing, search, file reads, controlled file writes, string replacement, and optional shell execution.
+- Provides inline code completions backed by the same endpoint.
+- Replaces Roo’s unbounded memory accumulation with explicit workspace snapshots and bounded prompt budgets.
 
-<!--
-  <<< Author notes: Step 1 >>>
-  Choose 3-5 steps for your course.
-  The first step is always the hardest, so pick something easy!
-  Link to docs.github.com for further explanations.
-  Encourage users to open new tabs for steps!
--->
+## Quick start
 
-## Step 1: Leverage Codespaces with VS Code for Copilot
+1. Start LM Studio and enable its local server.
+1. From the repository root, run `corepack pnpm install`.
+1. Build the extension with `corepack pnpm compile`.
+1. Press `F5` in VS Code to launch an Extension Development Host.
+1. Open the chat model picker, manage models, and enable the `ForgeCode` provider.
+1. Use `@local` in chat or select a ForgeCode model directly.
 
-_Welcome to "Develop With AI Powered Code Suggestions Using GitHub Copilot and VS Code"! :wave:_
+The default endpoint is `http://127.0.0.1:1234/v1`, which matches LM Studio’s OpenAI-compatible server.
 
-GitHub Copilot is an AI pair programmer that helps you write code faster and with less work. It draws context from comments and code to suggest individual lines and whole functions instantly. GitHub Copilot is powered by OpenAI Codex, a generative pretrained language model created by OpenAI.
+## Security defaults
 
-**Copilot works with many code editors including VS Code, Visual Studio, JetBrains IDE, and Neovim.**
+- ForgeCode accepts only localhost endpoints unless `forgeCode.allowRemoteEndpoints` is enabled.
+- Remote endpoints must use `https`.
+- API keys are stored in VS Code secret storage through `ForgeCode: Configure API Key` instead of plain settings.
+- Shell execution is disabled by default and requires both workspace trust and `forgeCode.allowCommandExecution = true`.
+- Read and search tools skip oversized or binary files.
+- Write and replace tools refuse paths that escape the workspace through symlinks or junctions.
 
-Additionally, GitHub Copilot is trained on all languages that appear in public repositories. For each language, the quality of suggestions you receive may depend on the volume and diversity of training data for that language.
+These controls harden the extension, but they do not create an absolute security guarantee. Any tool-capable coding agent still needs user review and sensible trust boundaries.
 
-Using Copilot inside a Codespace shows just how easy it is to get up and running with GitHub's suite of [Collaborative Coding](https://github.com/features#features-collaboration) tools.
+## Key settings
 
-> **Note**
-> This skills exercise will focus on leveraging GitHub Codespace. It is recommended that you complete the GitHub skill, [Codespaces](https://github.com/skills/code-with-codespaces), before moving forward with this exercise.
+- `forgeCode.baseUrl`: endpoint URL.
+- `forgeCode.allowRemoteEndpoints`: permit non-localhost endpoints.
+- `forgeCode.allowCommandExecution`: permit shell execution after confirmation.
+- `forgeCode.defaultChatModel`: preferred chat model ID.
+- `forgeCode.defaultCompletionModel`: preferred inline completion model ID.
+- `forgeCode.maxContextCharacters`: workspace prompt budget.
+- `forgeCode.maxReadFileBytes`: per-file read and edit limit.
+- `forgeCode.maxSearchFileBytes`: per-file search limit.
+- `forgeCode.maxCommandOutputCharacters`: maximum shell output returned to the model.
+- `forgeCode.maxToolRounds`: cap for agent tool loops.
+- `forgeCode.inlineCompletions.enabled`: toggle completions on or off.
 
-### :keyboard: Activity: Enable Copilot inside a Codespace
+## Development workflow
 
-**We recommend opening another browser tab to work through the following activities so you can keep these instructions open for reference.**
+- `corepack pnpm compile`: build once.
+- `corepack pnpm watch`: incremental compile for extension debugging.
+- `corepack pnpm test`: run the TypeScript unit tests.
+- `ForgeCode: Refresh Models`: force model rediscovery after changing the endpoint or loading a new model in LM Studio.
+- `ForgeCode: Configure Endpoint`: update the configured endpoint without hand-editing settings.
+- `ForgeCode: Configure API Key`: store or clear the optional bearer token in secret storage.
 
-Before you open up a codespace on a repository, you can create a development container and define specific extensions or configurations that will be used or installed in your codespace. Let's create this development container and add copilot to the list of extensions.
+## Repository layout
 
-1. Navigating back to your **Code** tab of your repository, click the **Add file** drop-down button, and then click `Create new file`.
-1. Type or paste the following in the empty text field prompt to name your file.
-   ```
-   .devcontainer/devcontainer.json
-   ```
-1. In the body of the new **.devcontainer/devcontainer.json** file, add the following content:
-   ```
-   {
-       // Name this configuration
-       "name": "Codespace for Skills!",
-       "customizations": {
-           "vscode": {
-               "extensions": [
-                   "GitHub.copilot"
-               ]
-           }
-       }
-   }
-   ```
-1. Select the option to **Commit directly to the `main` branch**, and then click the **Commit new file** button.
-1. Navigate back to the home page of your repository by clicking the **Code** tab located at the top left of the screen.
-1. Click the **Code** button located in the middle of the page.
-1. Click the **Codespaces** tab on the box that pops up.
-1. Click the **Create codespace on main** button.
+- `src/`: extension runtime.
+- `test/`: unit tests for pure protocol logic.
+- `.vscode/`: launch and watch tasks for extension development.
+- `ai_coder/`: legacy Roo prototype, task runner, and Gemini bridge retained for reference and migration history.
 
-   **Wait about 2 minutes for the codespace to spin itself up.**
+## Legacy note
 
-1. Verify your codespace is running. The browser should contain a VS Code web-based editor and a terminal should be present such as the below:
-   ![Screen Shot 2023-03-09 at 9 09 07 AM](https://user-images.githubusercontent.com/26442605/224102962-d0222578-3f10-4566-856d-8d59f28fcf2e.png)
-1. The `copilot` extension should show up in the VS Code extension list. Click the extensions sidebar tab. You should see the following:
-   ![Screen Shot 2023-03-09 at 9 04 13 AM](https://user-images.githubusercontent.com/26442605/224102514-7d6d2f51-f435-401d-a529-7bae3ae3e511.png)
-
-**Wait about 60 seconds then refresh your repository landing page for the next step.**
-
-<footer>
-
-<!--
-  <<< Author notes: Footer >>>
-  Add a link to get support, GitHub status page, code of conduct, license link.
--->
-
----
-
-Get help: [Post in our discussion board](https://github.com/orgs/skills/discussions/categories/code-with-copilot) &bull; [Review the GitHub status page](https://www.githubstatus.com/)
-
-&copy; 2023 GitHub &bull; [Code of Conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct/code_of_conduct.md) &bull; [MIT License](https://gh.io/mit)
-
-</footer>
+Roo’s file-backed task runner and append-only logs are intentionally preserved, but they are not the production path anymore. ForgeCode is built around explicit context selection, bounded prompts, tool-mediated workspace access, and standard VS Code AI surfaces.
