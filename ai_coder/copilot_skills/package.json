@@ -1,0 +1,8 @@
+{
+  "scripts": {
+    "test": "python -m unittest discover -s . -p \"test_*.py\" -v"
+  },
+  "dependencies": {
+    "@google/gemini-cli": "^0.1.11"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "task_id": "demo-auto-pick-loop",
+  "summary": "Auto-pick the next queued Roo task from checklist.",
+  "description": "Demonstrate that Roo can discover a queued task in checklist.md, execute it, validate it, and close it without a manual --task-file argument.",
+  "target_file": "ai_coder/reports/runner_demo_target.md",
+  "report_file": "ai_coder/reports/project_report.md",
+  "test_command": [
+    "python",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "ai_coder/copilot_skills",
+    "-p",
+    "test_*.py",
+    "-v"
+  ],
+  "operation": {
+    "type": "append_text",
+    "content": "Auto-picked by Roo from checklist queue.\n"
+  }
+}

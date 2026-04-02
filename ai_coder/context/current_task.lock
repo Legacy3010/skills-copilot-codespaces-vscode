@@ -1,0 +1,12 @@
+# Current Task Lock
+
+task_id: demo-auto-pick-loop
+status: completed
+mode: Report
+summary: Auto-pick the next queued Roo task from checklist.
+description: Demonstrate that Roo can discover a queued task in checklist.md, execute it, validate it, and close it without a manual --task-file argument.
+target_file: ai_coder/reports/runner_demo_target.md
+report_file: ai_coder/reports/project_report.md
+started_at: 2026-03-16 16:57:12 UTC
+updated_at: 2026-03-16 17:17:05 UTC
+note: Latest verification confirmed 4 Roo runner tests, 8 Gemini tests, and a successful next-task run.

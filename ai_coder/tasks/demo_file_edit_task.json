@@ -1,0 +1,23 @@
+{
+  "task_id": "demo-file-edit-loop",
+  "summary": "Prove Roo can plan, edit a file, run tests, and report outcomes.",
+  "description": "Execute the first end-to-end Roo loop against a dedicated demo target file in ai_coder/reports.",
+  "target_file": "ai_coder/reports/runner_demo_target.md",
+  "report_file": "ai_coder/reports/project_report.md",
+  "test_command": [
+    "python",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    "ai_coder/copilot_skills",
+    "-p",
+    "test_*.py",
+    "-v"
+  ],
+  "operation": {
+    "type": "replace_text",
+    "old_text": "Status: pending",
+    "new_text": "Status: completed"
+  }
+}
