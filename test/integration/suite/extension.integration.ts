@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import * as vscode from 'vscode';
+import { getSettings } from '../../../src/config';
 import { COMMANDS, MODEL_VENDOR, TOOL_NAMES } from '../../../src/util/constants';
 
 const EXTENSION_ID = 'vibecode.forgecode-agent';
@@ -7,6 +8,9 @@ const EXTENSION_ID = 'vibecode.forgecode-agent';
 suite('ForgeCode Extension Host', function () {
   this.timeout(60000);
 
+  let priorAllowCommandExecution: boolean | undefined;
+  let priorAllowRemoteEndpoints: boolean | undefined;
+  let priorBaseUrl: string | undefined;
   let priorDiscoveredModels: readonly string[] | undefined;
 
   suiteSetup(async () => {
@@ -15,6 +19,9 @@ suite('ForgeCode Extension Host', function () {
     await extension.activate();
 
     const config = vscode.workspace.getConfiguration('forgeCode');
+    priorAllowCommandExecution = config.inspect<boolean>('allowCommandExecution')?.workspaceValue;
+    priorAllowRemoteEndpoints = config.inspect<boolean>('allowRemoteEndpoints')?.workspaceValue;
+    priorBaseUrl = config.inspect<string>('baseUrl')?.workspaceValue;
     priorDiscoveredModels = config.inspect<string[]>('discoveredModels')?.workspaceValue;
     await config.update('discoveredModels', ['forgecode-test-model', 'forgecode-fallback-model'], vscode.ConfigurationTarget.Workspace);
     await vscode.commands.executeCommand(COMMANDS.refreshModels);
@@ -23,6 +30,9 @@ suite('ForgeCode Extension Host', function () {
 
   suiteTeardown(async () => {
     const config = vscode.workspace.getConfiguration('forgeCode');
+    await config.update('allowCommandExecution', priorAllowCommandExecution, vscode.ConfigurationTarget.Workspace);
+    await config.update('allowRemoteEndpoints', priorAllowRemoteEndpoints, vscode.ConfigurationTarget.Workspace);
+    await config.update('baseUrl', priorBaseUrl, vscode.ConfigurationTarget.Workspace);
     await config.update('discoveredModels', priorDiscoveredModels, vscode.ConfigurationTarget.Workspace);
   });
 
@@ -63,6 +73,29 @@ suite('ForgeCode Extension Host', function () {
     });
     const searchText = flattenToolResult(searchResult);
     assert.match(searchText, /src[\\/]sample\.ts:2:/);
+  });
+
+  test('rejects terminal execution when command access is disabled', async () => {
+    const config = vscode.workspace.getConfiguration('forgeCode');
+    await config.update('allowCommandExecution', false, vscode.ConfigurationTarget.Workspace);
+
+    await assert.rejects(
+      async () => {
+        await vscode.lm.invokeTool(TOOL_NAMES.runTerminalCommand, {
+          input: { command: 'echo smoke-test' },
+          toolInvocationToken: undefined,
+        });
+      },
+      /Shell execution is disabled/,
+    );
+  });
+
+  test('rejects insecure remote endpoints in workspace settings', async () => {
+    const config = vscode.workspace.getConfiguration('forgeCode');
+    await config.update('allowRemoteEndpoints', false, vscode.ConfigurationTarget.Workspace);
+    await config.update('baseUrl', 'http://example.com/v1', vscode.ConfigurationTarget.Workspace);
+
+    assert.throws(() => getSettings(), /Remote endpoints are disabled/);
   });
 });
 

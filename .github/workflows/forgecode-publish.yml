@@ -1,0 +1,58 @@
+name: ForgeCode Publish
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  publish-marketplace:
+    runs-on: windows-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run full test suite
+        run: pnpm test
+
+      - name: Package VSIX
+        run: pnpm package
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: forgecode-vsix
+          path: forgecode-agent-*.vsix
+          if-no-files-found: error
+
+      - name: Validate Marketplace secret
+        shell: bash
+        run: |
+          if [ -z "${VSCE_PAT}" ]; then
+            echo "VSCE_PAT is not configured. Add a Marketplace Personal Access Token to repository secrets before publishing."
+            exit 1
+          fi
+        env:
+          VSCE_PAT: ${{ secrets['VSCE_PAT'] }}
+
+      - name: Publish to Visual Studio Marketplace
+        shell: bash
+        run: pnpm exec vsce publish -p "${VSCE_PAT}" --packagePath forgecode-agent-*.vsix
+        env:
+          VSCE_PAT: ${{ secrets['VSCE_PAT'] }}
